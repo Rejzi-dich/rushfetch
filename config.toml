@@ -1,0 +1,283 @@
+# ============================================================================
+# rushfetch configuration file
+# ============================================================================
+# Location: ~/.config/rushfetch/config.toml
+# Default:  /etc/rushfetch/config.toml
+#
+# This is a self-documented config - no boring docs needed!
+# Copy this to ~/.config/rushfetch/ and customize as you like.
+# ============================================================================
+
+# ============================================================================
+# LANGUAGE SETTINGS
+# ============================================================================
+# Choose your language style:
+#   "english"  - English interface
+#   "russian"  - Неформальный русский язык
+#
+# Default: "english"
+language = "english"
+
+# ============================================================================
+# COLOR THEME
+# ============================================================================
+# Customize all colors! Available colors:
+#   - Basic: black, red, green, yellow, blue, magenta, cyan, white
+#   - Bright: bright_black, bright_red, bright_green, bright_yellow,
+#            bright_blue, bright_magenta, bright_cyan, bright_white
+#
+# What each color does:
+#   primary   = Category icons and headers (like "SYSTEM", "HARDWARE")
+#   secondary = Field labels (like "OS", "CPU", "Memory")
+#   accent    = The user@hostname header at the top
+#   text      = All the actual values (the info displayed)
+
+[theme]
+primary   = "bright_yellow"   # Category icons & names
+secondary = "bright_cyan"     # Field labels
+accent    = "bright_magenta"  # user@hostname header
+text      = "bright_white"    # Values & data
+
+# ============================================================================
+# POPULAR THEME PRESETS (uncomment to use)
+# ============================================================================
+
+# Gruvbox Dark
+# [theme]
+# primary = "bright_yellow"
+# secondary = "yellow"
+# accent = "bright_red"
+# text = "white"
+
+# Dracula
+# [theme]
+# primary = "magenta"
+# secondary = "cyan"
+# accent = "bright_magenta"
+# text = "white"
+
+# Nord
+# [theme]
+# primary = "bright_blue"
+# secondary = "cyan"
+# accent = "blue"
+# text = "white"
+
+# Solarized Dark
+# [theme]
+# primary = "yellow"
+# secondary = "cyan"
+# accent = "blue"
+# text = "white"
+
+# Monokai
+# [theme]
+# primary = "bright_green"
+# secondary = "bright_yellow"
+# accent = "magenta"
+# text = "white"
+
+# Tokyo Night
+# [theme]
+# primary = "bright_magenta"
+# secondary = "bright_blue"
+# accent = "bright_cyan"
+# text = "bright_white"
+
+# ============================================================================
+# CATEGORIES & SUBCATEGORIES
+# ============================================================================
+# Each category groups related system info together.
+# You can enable/disable entire categories or customize subcategories.
+#
+# Structure:
+#   [[categories]]           - Start a new category
+#   name = "category_name"   - Category identifier
+#   enabled = true/false     - Show or hide this category
+#   subcategories = [...]    - What info to show in this category
+
+# ┌────────────────────────────────────────────────────────────────┐
+# │ SYSTEM INFORMATION                                             │
+# └────────────────────────────────────────────────────────────────┘
+# Shows: Operating system, kernel version, CPU architecture
+[[categories]]
+name = "system"
+enabled = true
+subcategories = [
+    "os",        # Operating system name and version
+    "kernel",    # Linux kernel version
+    "arch",      # CPU architecture (x86_64, aarch64, etc.)
+]
+
+# ┌────────────────────────────────────────────────────────────────┐
+# │ HARDWARE                                                       │
+# └────────────────────────────────────────────────────────────────┘
+# Shows: Device hostname, CPU model, GPU info
+[[categories]]
+name = "hardware"
+enabled = true
+subcategories = [
+    "host",      # Hostname / device name
+    "cpu",       # CPU model and brand
+    "gpu",       # Graphics card (requires lspci)
+]
+
+# ┌────────────────────────────────────────────────────────────────┐
+# │ SYSTEM RESOURCES                                               │
+# └────────────────────────────────────────────────────────────────┘
+# Shows: RAM usage, swap usage, disk space
+[[categories]]
+name = "resources"
+enabled = true
+subcategories = [
+    "memory",    # RAM usage (used / total)
+    "swap",      # Swap usage (used / total)
+    "disk",      # Disk space (used / total) - shows first disk
+]
+
+# ┌────────────────────────────────────────────────────────────────┐
+# │ ENVIRONMENT                                                    │
+# └────────────────────────────────────────────────────────────────┘
+# Shows: Uptime, shell, terminal, desktop environment
+[[categories]]
+name = "environment"
+enabled = true
+subcategories = [
+    "uptime",    # System uptime (days, hours, minutes)
+    "shell",     # Current shell (bash, zsh, fish, etc.)
+    "terminal",  # Terminal emulator
+    "de",        # Desktop Environment or Window Manager
+]
+
+# ┌────────────────────────────────────────────────────────────────┐
+# │ NETWORK (disabled by default - can be slow)                    │
+# └────────────────────────────────────────────────────────────────┘
+# Shows: Local IP, public IP
+# WARNING: Fetching public IP requires internet and may be slow!
+[[categories]]
+name = "network"
+enabled = false  # Set to true to enable
+subcategories = [
+    "local_ip",  # Local network IP address
+    "public_ip", # Public IP address (makes external request!)
+]
+
+# ============================================================================
+# CUSTOM FIELDS
+# ============================================================================
+# Add your own custom commands and display their output!
+# Perfect for showing package counts, battery status, etc.
+#
+# Structure:
+#   [[custom_fields]]
+#   name = "Display Name"
+#   command = "shell command to run"
+#
+# The command output will be shown next to the name.
+
+# Example: Show number of installed packages
+[[custom_fields]]
+name = "Packages"
+command = "pacman -Q | wc -l"
+
+# Example: Show current text editor
+[[custom_fields]]
+name = "Editor"
+command = "echo $EDITOR"
+
+# ============================================================================
+# MORE CUSTOM FIELD IDEAS (uncomment to use)
+# ============================================================================
+
+# Show GTK theme
+# [[custom_fields]]
+# name = "GTK Theme"
+# command = "gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null | tr -d \"'\""
+
+# Show icon theme
+# [[custom_fields]]
+# name = "Icons"
+# command = "gsettings get org.gnome.desktop.interface icon-theme 2>/dev/null | tr -d \"'\""
+
+# Show current window manager
+# [[custom_fields]]
+# name = "WM"
+# command = "wmctrl -m 2>/dev/null | grep Name | awk '{print $2}'"
+
+# Show battery percentage (for laptops)
+# [[custom_fields]]
+# name = "Battery"
+# command = "acpi 2>/dev/null | grep -oP '\\d+(?=%)' | head -1"
+
+# Show battery status
+# [[custom_fields]]
+# name = "Battery"
+# command = "acpi | awk '{print $3 $4}' | tr -d ','"
+
+# Show load average
+# [[custom_fields]]
+# name = "Load"
+# command = "uptime | awk -F'load average:' '{print $2}' | xargs"
+
+# Show current audio volume
+# [[custom_fields]]
+# name = "Volume"
+# command = "amixer get Master | grep -o '[0-9]*%' | head -1"
+
+# Show screen resolution
+# [[custom_fields]]
+# name = "Resolution"
+# command = "xrandr | grep '*' | awk '{print $1}' | head -1"
+
+# Show current Wifi network
+# [[custom_fields]]
+# name = "WiFi"
+# command = "iwgetid -r 2>/dev/null"
+
+# Show AUR package count (if using yay/paru)
+# [[custom_fields]]
+# name = "AUR Packages"
+# command = "pacman -Qm | wc -l"
+
+# Show orphan packages
+# [[custom_fields]]
+# name = "Orphans"
+# command = "pacman -Qtdq 2>/dev/null | wc -l"
+
+# Show ZSH plugins count
+# [[custom_fields]]
+# name = "ZSH Plugins"
+# command = "ls -1 ~/.oh-my-zsh/custom/plugins 2>/dev/null | wc -l"
+
+# Show system temperature (requires lm_sensors)
+# [[custom_fields]]
+# name = "CPU Temp"
+# command = "sensors | grep 'Package id 0' | awk '{print $4}'"
+
+# Show currently playing song (Spotify via playerctl)
+# [[custom_fields]]
+# name = "Now Playing"
+# command = "playerctl metadata --format '{{ artist }} - {{ title }}' 2>/dev/null"
+
+# ============================================================================
+# TIPS & TRICKS
+# ============================================================================
+# 
+# 1. Categories can be reordered - just move the [[categories]] blocks around
+# 
+# 2. Remove subcategories you don't want by deleting them from the list
+# 
+# 3. Mix English and Russian by creating custom_fields with Russian names
+# 
+# 4. Test your custom commands in terminal first before adding them here
+# 
+# 5. Use 2>/dev/null in commands to hide error messages
+# 
+# 6. Want minimal output? Disable categories and keep only what you need
+# 
+# 7. Create multiple config files and swap them:
+#    cp ~/.config/fuckfetch/minimal.toml ~/.config/fuckfetch/config.toml
+#
+# ============================================================================
+
+# vim:ft=toml
