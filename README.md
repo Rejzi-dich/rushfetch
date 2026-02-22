@@ -1,42 +1,55 @@
 # 🚀 rushfetch
 
-> Fast system information tool written in Rust. Rush like the wind, fetch like a champion!
+> A fast system information utility written in Rust. Rush in like a hurricane, grab the info!
 
-**rushfetch** is a modern system information utility that displays your system specs in a clean, customizable format. Written in Rust for maximum performance and safety.
+**rushfetch** is a modern utility for displaying your system's characteristics in a clean, customizable format. Written in Rust for maximum performance.
 
 ## ✨ Features
 
-- ⚡ **Blazing Fast** - Written in Rust, compiled to native code
-- 🎨 **Customizable Themes** - Full color control with popular presets (Gruvbox, Dracula, Nord, etc.)
-- 🌍 **Multiple Languages** - English and Russian support
-- 📦 **Modular Categories** - Enable/disable entire categories or specific subcategories
-- 🛠️ **Custom Fields** - Add your own commands and display anything you want
-- 🎯 **Minimal Dependencies** - Just the essentials
-- 📝 **Self-Documenting Config** - No need to read boring documentation
+- ⚡ **BLAZING fast** - Written in Rust, compiles to native code
+- 🎨 **Customizable themes** - Full color control with ready presets (Gruvbox, Dracula, Nord, etc.)
+- 🌍 **Multiple languages** - Support for English and Russian
+- 📦 **Modular categories** - Enable/disable entire categories or individual fields
+- 🛠️ **Custom fields** - Add your own commands and show what you want
+- 🎯 **Minimal dependencies** - Only the essentials
+- 📝 **Self-documenting config** - No need to read boring docs
 
 ## 📸 Screenshots
 
 ```
- user@hostname
 
- ◉ SYSTEM
-   OS .............. Arch Linux 6.7.2
-   Kernel .......... 6.7.2-arch1-1
-   Arch ............ x86_64
-
- ◈ HARDWARE
-   Host ............ ThinkPad X1 Carbon
-   CPU ............. AMD Ryzen 9 5900X
-   GPU ............. NVIDIA GeForce RTX 3080
-
- ◫ RESOURCES
-   RAM ............. 8192 MB / 16384 MB
-   Disk ............ 256 GB / 512 GB
+                                           rejzi@mac
+                   -`                      ─────────
+                  .o+`                     
+                 `oooo.                    󰍛 System
+                `+oooo:                      OS ........... EndeavourOS
+               `+oooooo:                     Kernel ....... 6.18.7-zen1-1-zen
+               -+oooooo+:                    Arch ......... x86_64
+             `/:-:++oooo+:                 
+            `/++++/+++++++:                󰘚 Hardware
+           `/++++++++++++++:                 Host ......... mac
+          `/+++rustooooooooo\`               CPU .......... Intel(R) Core(TM) i5-2415M CPU @ 2.30GHz
+         ./ooosssso++osssssso+`            
+        .oossssso-````/ossssss+`           󰓅 Resources
+       -osssssso.      :ssssssso.            RAM .......... 7143 MB / 7846 MB
+      :osssssss/        osssso+++.           Swap ......... 2022 MB / 2047 MB
+     /ossssssss/        +ssssooo/-           Disk ......... 126 GB / 147 GB
+   `/ossssso+/:-        -:/+osssso+-       
+  `+sso+:-`                 `.-/+oso:      󰆍 Environment
+ `++:.                           `-/+/       Uptime ....... 18h 51m
+ .`                                 `        Shell ........ fish
+                                             Terminal ..... xterm-kitty
+                                             DE / WM ...... KDE
+                                           
+                                           󰆾 Custom
+                                             Packages ....... 1853
+                                             Flatpaks ....... 28
+                                             Snaps .......... 18
 ```
 
 ## 🚀 Installation
 
-### Arch Linux (AUR)
+### Arch-based (AUR)
 
 ```bash
 yay -S rushfetch
@@ -44,7 +57,7 @@ yay -S rushfetch
 paru -S rushfetch
 ```
 
-### From Source
+### From source
 
 ```bash
 git clone https://github.com/yourusername/rushfetch.git
@@ -57,12 +70,12 @@ sudo cp config.toml /etc/rushfetch/
 
 ## 🎮 Usage
 
-Simply run:
+Just run:
 ```bash
 rushfetch
 ```
 
-### First Time Setup
+### First setup
 
 Copy the default config to customize:
 ```bash
@@ -70,20 +83,20 @@ mkdir -p ~/.config/rushfetch
 cp /etc/rushfetch/config.toml ~/.config/rushfetch/
 ```
 
-Then edit `~/.config/rushfetch/config.toml` - it's fully documented with examples!
+Then edit `~/.config/rushfetch/config.toml` - everything is described there with examples!
 
 ## ⚙️ Configuration
 
-rushfetch uses a self-documenting TOML config file. Here's a quick taste:
+rushfetch uses a self-documenting TOML config. Here's a snippet:
 
 ```toml
-# Choose your language
-language = "english"  # or "russian"
+# Choose language
+language = "russian"  # or "english"
 
-# Customize colors
+# Configure colors
 [theme]
-primary = "bright_yellow"    # Category icons and headers
-secondary = "bright_cyan"    # Field labels
+primary = "bright_yellow"    # Icons and category titles
+secondary = "bright_cyan"    # Field names
 accent = "bright_magenta"    # user@hostname
 text = "bright_white"        # Values
 
@@ -93,91 +106,100 @@ name = "system"
 enabled = true
 subcategories = ["os", "kernel", "arch"]
 
-# Add custom fields
+# Add your own fields
 [[custom_fields]]
 name = "Packages"
 command = "pacman -Q | wc -l"
 ```
 
-See the [full config example](config.toml) for all options!
+See [full config example](config.toml) with all options!
 
 ## 🎨 Popular Themes
 
-The config includes presets for:
-- **Gruvbox** - Retro groove colors
+Presets are available in the config:
+- **Gruvbox** - Retro colors
 - **Dracula** - Dark vampire theme
-- **Nord** - Arctic, north-bluish color palette
-- **Solarized** - Precision colors for machines and people
+- **Nord** - Arctic, northern palette
+- **Solarized** - Precise colors for machines and humans
 - **Monokai** - Smooth and pleasant
-- **Tokyo Night** - A dark theme inspired by Tokyo at night
+- **Tokyo Night** - Dark theme in Tokyo night style
 
-Just uncomment the theme you want in the config!
+Just uncomment the desired theme in the config!
 
 ## 🌐 Language Support
 
-### English Mode
+### English mode
 ```
-OS .............. Arch Linux
-CPU ............. AMD Ryzen 9
-Memory .......... 16 GB / 32 GB
+OS .......... Arch Linux
+CPU ......... AMD Ryzen 9
+Memory ...... 16 GB / 32 GB
 ```
 
-### Russian Mode (неформальный стиль)
+### Russian mode
 ```toml
 language = "russian"
 ```
 ```
-ОСь ............. Arch Linux
-Процессор ....... AMD Ryzen 9
-Память .......... 16 GB / 32 GB
+ОС .......... Arch Linux
+Проц ........ AMD Ryzen 9
+Память ...... 12 GB / 32 GB
 ```
 
-## 🛠️ Custom Fields Examples
+## 🛠️ Custom Field Examples
 
-Add anything you want to display:
+Add whatever you want:
 
 ```toml
 # Package count
 [[custom_fields]]
-name = "Packages"
+label   = "Packages"
 command = "pacman -Q | wc -l"
 
 # Battery status
 [[custom_fields]]
-name = "Battery"
+label   = "Battery"
 command = "acpi | awk '{print $4}' | tr -d ','"
 
-# Current playing song
+# Now playing
 [[custom_fields]]
-name = "Now Playing"
+label   = "Playing"
 command = "playerctl metadata --format '{{ artist }} - {{ title }}'"
 
 # GTK theme
 [[custom_fields]]
-name = "GTK Theme"
+label   = "GTK theme"
 command = "gsettings get org.gnome.desktop.interface gtk-theme"
 ```
 
-See config.toml for 20+ more examples!
+There are more examples in config.toml!
 
 ## 🏗️ Architecture
 
-rushfetch is built with clean, modular architecture:
+rushfetch is built with clean modular architecture:
 
-- **SystemInfo** - Hardware and system information gathering
+- **SystemInfo** - Hardware and system information collection
 - **Localizer** - Multi-language support
-- **Config** - Type-safe configuration with serde
+- **Config** - Type-safe configuration via serde
 - **Theme** - Flexible color system
 
-All written in idiomatic Rust with proper error handling.
+Everything is written in BLAZING Rust with proper error handling.
 
-## 🤝 Contributing
+## 🤝 Contribute, Comrade!
 
-Contributions are welcome! Feel free to:
+Contributions are welcome! You can:
 - Report bugs
 - Suggest features
-- Submit pull requests
+- Make pull requests
 - Improve documentation
+
+as soon as the author sober up, he will definitely answer you!
+
+## Plans!
+- make it possible to create categories for custom fields
+- add ability to add custom fields to built-in categories
+- add more built-in fields
+- add more built-in ascii arts for other distributions and systems
+- publish on termux repository
 
 ## 📜 License
 
@@ -186,17 +208,17 @@ GPL-3.0 - See [LICENSE](LICENSE) for details.
 ## 🙏 Acknowledgments
 
 Inspired by:
-- **neofetch** - The OG system info tool (RIP)
+- **neofetch** - The original system info tool (rest in peace)
 - **fastfetch** - Fast C implementation
 - **Rust** - For making this possible
 
 ## 📞 Support
 
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/rushfetch/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/rushfetch/discussions)
+- 🐛 Bugs: [GitHub Issues](https://github.com/Rejzi-dich/rushfetch/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/Rejzi-dich/rushfetch/discussions)
 
 ---
 
-**Made with ❤️ and Rust**
+**Made with ❤️ on Rust**
 
-*Rush in, fetch fast, look good.*
+*Rush in fast, grab the info, look cool.*
