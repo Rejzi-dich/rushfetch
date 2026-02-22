@@ -10,7 +10,12 @@ colored = "2.1"
 libc = "0.2"
 
 [profile.release]
-opt-level     = 3
-lto           = true
-codegen-units = 1
-strip         = true
+lto                 = true
+panic               = "abort"
+opt-level           = 3
+codegen-units       = 1
+strip               = true
+overflow-checks     = false
+debug-assertions    = false
+debug               = false
+target-cpu          = "native" 

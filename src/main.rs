@@ -11,10 +11,14 @@
 
 use colored::*;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 use std::env;
 use std::fs;
 use std::io::{self, BufRead};
 use std::path::Path;
+use std::sync::OnceLock;
+use std::thread;
+use std::time::{Duration, Instant};
 
 // функция для подсчёта ширины символов
 fn unicode_str_width(s: &str) -> usize {
@@ -44,36 +48,25 @@ fn unicode_str_width(s: &str) -> usize {
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum InfoField {
-    Os,
-    Kernel,
-    Arch,
-    Host,
-    Cpu,
-    Gpu,
-    Memory,
-    Swap,
-    Disk,
+    Kernel,     Os,     Arch, Host,
+    Memory,     Swap,   Disk,
+    Terminal,   Shell,  De,
+    PublicIp,   LocalIp,
+    Cpu,        Gpu,
     Uptime,
-    Shell,
-    Terminal,
-    De,
-    LocalIp,
-    PublicIp,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum BuiltinCategory {
-    System,
-    Hardware,
-    Res,
-    Env,
-    Net,
+    System, Hardware,
+    Res, Env, Net,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct CategoryConfig {
     pub category: BuiltinCategory,
+
     #[serde(default = "default_true")]
     pub enabled: bool,
     #[serde(default)]
@@ -82,32 +75,27 @@ pub struct CategoryConfig {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct CustomField {
-    pub label: String,
+    pub label:   String,
     pub command: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AsciiConfig {
-    // Включает отображение ascii
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-    // путь к фалу с артом
     pub file: Option<String>,
     // указывает встренный асции какого дистриубтива отображать. если не указть будет опеределять сам
     pub distro: Option<String>,
-    #[serde(default = "default_ascii_width")]
-    pub width: usize,
-    #[serde(default = "default_accent_color")]
-    pub color: String,
+    #[serde(default = "default_true")]          pub enabled: bool,
+    #[serde(default = "default_ascii_width")]   pub width:   usize,
+    #[serde(default = "default_accent_color")]  pub color:   String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Theme {
-    pub primary: String,
-    pub secondary: String,
-    pub accent: String,
-    pub text: String,
-    pub separator: String,
+    pub primary:    String,
+    pub secondary:  String,
+    pub accent:     String,
+    pub text:       String,
+    pub separator:  String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
@@ -118,24 +106,17 @@ pub enum Language {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Config {
-    #[serde(default)]
-    pub language: Language,
-    #[serde(default)]
-    pub theme: Theme,
-    #[serde(default)]
-    pub ascii: AsciiConfig,
-    // иконки категорий
-    #[serde(default = "default_true")]
-    pub show_icons: bool,
-    #[serde(default = "default_categories")]
-    pub categories: Vec<CategoryConfig>,
-    #[serde(default)]
-    pub custom_fields: Vec<CustomField>,
+    #[serde(default)] pub language: Language,
+    #[serde(default)] pub theme:    Theme,
+    #[serde(default)] pub ascii:    AsciiConfig,
+    #[serde(default)] pub custom_fields: Vec<CustomField>,
+    #[serde(default = "default_true")]       pub show_icons: bool,
+    #[serde(default = "default_categories")] pub categories: Vec<CategoryConfig>,
 }
 
-fn default_true()           -> bool     { true }
-fn default_ascii_width()    -> usize    { 20 }
-fn default_accent_color()   -> String   { "bright_cyan".to_string() }
+fn default_true()         -> bool   { true }
+fn default_ascii_width()  -> usize  { 20 }
+fn default_accent_color() -> String { "bright_cyan".to_string() }
 
 impl Default for Language {
     fn default() -> Self {
@@ -146,11 +127,11 @@ impl Default for Language {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            primary: "bright_yellow".to_string(),
-            secondary: "bright_cyan".to_string(),
-            accent: "bright_magenta".to_string(),
-            text: "bright_white".to_string(),
-            separator: "bright_black".to_string(),
+            primary:    "bright_yellow".to_string(),
+            secondary:  "bright_cyan".to_string(),
+            accent:     "bright_magenta".to_string(),
+            text:       "bright_white".to_string(),
+            separator:  "bright_black".to_string(),
         }
     }
 }
@@ -159,10 +140,10 @@ impl Default for AsciiConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            file: None,
+            file:   None,
             distro: None,
-            width: 20,
-            color: "bright_cyan".to_string(),
+            width:  20,
+            color:  "bright_cyan".to_string(),
         }
     }
 }
@@ -170,12 +151,12 @@ impl Default for AsciiConfig {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            language: Language::default(),
-            theme: Theme::default(),
-            ascii: AsciiConfig::default(),
-            show_icons: true,
-            categories: default_categories(),
-            custom_fields: vec![],
+            language:       Language::default(),
+            theme:          Theme::default(),
+            ascii:          AsciiConfig::default(),
+            show_icons:     true,
+            categories:     default_categories(),
+            custom_fields:  vec![],
         }
     }
 }
@@ -183,35 +164,35 @@ impl Default for Config {
 fn default_categories() -> Vec<CategoryConfig> {
     vec![
         CategoryConfig {
-            category: BuiltinCategory::System,
-            enabled: true,
-            fields: vec![],
+            category:   BuiltinCategory::System,
+            enabled:    true,
+            fields:     vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Hardware,
-            enabled: true,
-            fields: vec![],
+            category:   BuiltinCategory::Hardware,
+            enabled:    true,
+            fields:     vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Res,
-            enabled: true,
-            fields: vec![],
+            category:   BuiltinCategory::Res,
+            enabled:    true,
+            fields:     vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Env,
-            enabled: true,
-            fields: vec![],
+            category:   BuiltinCategory::Env,
+            enabled:    true,
+            fields:     vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Net,
-            enabled: false,
-            fields: vec![],
+            category:   BuiltinCategory::Net,
+            enabled:    false,
+            fields:     vec![],
         },
     ]
 }
 
-fn default_fields(cat: BuiltinCategory) -> &'static [InfoField] {
-    match cat {
+fn default_fields(category: BuiltinCategory) -> &'static [InfoField] {
+    match category {
         BuiltinCategory::System => &[
             InfoField::Os,      InfoField::Kernel,  InfoField::Arch
         ],
@@ -320,35 +301,96 @@ pub struct SysData {
     pub local_ip:           Option<String>,
 }
 
+// для медленных операций
+static PUBLIC_IP_CACHE: OnceLock<Option<String>> = OnceLock::new();
+static GPU_CACHE: OnceLock<Option<String>> = OnceLock::new();
+
+// Глобальный кэш для статических данных (которые редко меняются)
+struct CachedData {
+    os_pretty_name: Option<String>,
+    hostname: Option<String>,
+    cpu_model: Option<String>,
+    kernel_version: Option<String>,
+    os_release_id: Option<String>,
+}
+
+static CACHED_DATA: OnceLock<CachedData> = OnceLock::new();
+
+// TTL кэш для динамических данных (память, диск)
+struct TtlCache<T> {
+    data: T,
+    timestamp: Instant,
+    ttl: Duration,
+}
+
+impl<T> TtlCache<T> {
+    fn new(data: T, ttl: Duration) -> Self {
+        Self {
+            data,
+            timestamp: Instant::now(),
+            ttl,
+        }
+    }
+    
+    fn get(&self) -> Option<&T> {
+        if self.timestamp.elapsed() < self.ttl {
+            Some(&self.data)
+        } else {
+            None
+        }
+    }
+    
+    fn is_valid(&self) -> bool {
+        self.timestamp.elapsed() < self.ttl
+    }
+}
+
+static MEMORY_CACHE: OnceLock<TtlCache<(u64, u64, u64, u64)>> = OnceLock::new();
+static DISK_CACHE:   OnceLock<TtlCache<(u64, u64)>>           = OnceLock::new();
+
 impl SysData {
     pub fn collect() -> Self {
-        // Collect everything in parallel where possible using scoped threads
-        let (memory_used_mb, memory_total_mb, swap_used_mb, swap_total_mb) = read_meminfo();
-        let (disk_used_gb, disk_total_gb) = read_disk_root();
+        // Запускаем тяжёлые операции параллельно
+        let memory_handle   = thread::spawn(read_meminfo);
+        let disk_handle     = thread::spawn(read_disk_root);
+        let uptime_handle   = thread::spawn(read_uptime);
+
+        // Быстрые операции выполняем последовательно
+        let terminal    = env::var("TERM").ok();
+        let shell       = shell_name();
+        let arch        = std::env::consts::ARCH;
+        let kernel      = read_kernel_version();
+        let host        = read_hostname();
+        let cpu         = read_cpu_model();
+        let os          = read_os_pretty_name();
+        let local_ip    = read_local_ip();
+
+        // получаем результаты из параллльных потоков
+        let (memory_used_mb, memory_total_mb, 
+             swap_used_mb, swap_total_mb) = memory_handle.join().unwrap();
+        let (disk_used_gb, disk_total_gb) = disk_handle.join().unwrap();
+
+        let uptime_secs = uptime_handle.join().unwrap();
 
         Self {
-            uptime_secs: read_uptime(),
-            terminal:    env::var("TERM").ok(),
-
-            kernel: read_kernel_version(),
-            shell:  shell_name(),
-            arch:   std::env::consts::ARCH,
-            host:   read_hostname(),
-            cpu:    read_cpu_model(),
-            gpu:    detect_gpu(),
-            os:     read_os_pretty_name(),
-
+            uptime_secs,
+            terminal,
+            kernel,
+            shell,
+            arch,
+            host,
+            cpu,
+            os,
+            local_ip,
             memory_used_mb,
             memory_total_mb,
             swap_used_mb,
             swap_total_mb,
             disk_used_gb,
             disk_total_gb,
-
+            gpu: None, // Будет загружено лениво
             de: env::var("XDG_CURRENT_DESKTOP")
-                .or_else(|_| env::var("DESKTOP_SESSION"))
-                .ok(),
-            local_ip: read_local_ip(),
+                .or_else(|_| env::var("DESKTOP_SESSION")).ok(),
         }
     }
 
@@ -359,7 +401,10 @@ impl SysData {
             InfoField::Arch     => Some(self.arch.to_string()),
             InfoField::Host     => self.host.clone(),
             InfoField::Cpu      => self.cpu.clone(),
-            InfoField::Gpu      => self.gpu.clone(),
+            InfoField::Gpu      => {
+                // Ленивая загрузка - только когда надо
+                GPU_CACHE.get_or_init(|| detect_gpu()).clone()
+            },
             InfoField::Memory   => Some(format!(
                 "{} MB / {} MB",
                 self.memory_used_mb, self.memory_total_mb
@@ -383,71 +428,128 @@ impl SysData {
             InfoField::Terminal => self.terminal.clone(),
             InfoField::De       => self.de.clone(),
             InfoField::LocalIp  => self.local_ip.clone(),
-            InfoField::PublicIp => fetch_public_ip(),
+            InfoField::PublicIp => {
+                // Ленивая загрузка айпи
+                PUBLIC_IP_CACHE.get_or_init(|| fetch_public_ip()).clone()
+            },
         }
     }
+}
+
+// Zero-copy оптимизация для чтения файлов
+fn read_file_cow(path: &str) -> Option<Cow<'static, str>> {
+    fs::read_to_string(path)
+        .ok()
+        .map(|s| Cow::Owned(s))
 }
 
 fn read_lines_from(path: &str) -> Option<Vec<String>> {
-    let file = fs::File::open(path).ok()?;
-    let reader = io::BufReader::new(file);
+    let file    = fs::File::open(path).ok()?;
+    let reader  = io::BufReader::new(file);
     Some(reader.lines().filter_map(|l| l.ok()).collect())
 }
 
-fn read_os_pretty_name() -> Option<String> {
-    let lines = read_lines_from("/etc/os-release")?;
-    for line in &lines {
-        if line.starts_with("PRETTY_NAME=") {
-            return Some(
-                line["PRETTY_NAME=".len()..]
-                    .trim_matches('"')
-                    .to_string(),
-            );
+// Инициализация глобального кэша
+fn init_cached_data() -> &'static CachedData {
+    CACHED_DATA.get_or_init(|| {
+        let os_release = read_file_cow("/etc/os-release").unwrap_or_default();
+        
+        // Парсим OS release
+        let mut os_pretty_name = None;
+        let mut os_release_id  = None;
+        
+        for line in os_release.lines() {
+            if line.starts_with("PRETTY_NAME=") {
+                os_pretty_name = Some(
+                    line["PRETTY_NAME=".len()..]
+                        .trim_matches('"')
+                        .to_string()
+                );
+            } else if line.starts_with("ID=") {
+                os_release_id = Some(
+                    line["ID=".len()..]
+                        .trim_matches('"')
+                        .to_lowercase()
+                );
+            }
+        }
+        
+        // Читаем остальные данные
+        let hostname = fs::read_to_string("/proc/sys/kernel/hostname")
+            .ok().map(|s| s.trim().to_string());
+            
+        let kernel_version = fs::read_to_string("/proc/version")
+            .ok().and_then(|s| {
+                s.strip_prefix("Linux version ")
+                    .and_then(|after| after.split_whitespace().next())
+                    .map(|v| v.to_string())
+            });
+            
+        let cpu_model = read_cpu_model_from_proc();
+        
+        CachedData {
+            os_pretty_name,
+            hostname,
+            cpu_model,
+            kernel_version,
+            os_release_id,
+        }
+    })
+}
+
+// Zero-copy оптимизированное чтение цпу
+fn read_cpu_model_from_proc() -> Option<String> {
+    if let Ok(content) = fs::read_to_string("/proc/cpuinfo") {
+        for line in content.lines() {
+            if let Some(model_start) = line.find("model name") {
+                if let Some(colon_pos) = line[model_start..].find(':') {
+                    let model_value = &line[model_start + colon_pos + 1..];
+                    let trimmed = model_value.trim();
+                    if !trimmed.is_empty() {
+                        let mut result = String::with_capacity(trimmed.len());
+                        let mut in_word = false;
+                        
+                        for ch in trimmed.chars() {
+                            if ch.is_whitespace() {
+                                if in_word {
+                                    result.push(' ');
+                                    in_word = false;
+                                }
+                            } else {
+                                result.push(ch);
+                                in_word = true;
+                            }
+                        }
+                        return Some(result.trim().to_string());
+                    }
+                }
+            }
+        }
+        
+        // Fallback для ARMов
+        for line in content.lines() {
+            if let Some(hardware_start) = line.find("Hardware") {
+                if let Some(colon_pos) = line[hardware_start..].find(':') {
+                    let hardware_value = &line[hardware_start + colon_pos + 1..];
+                    let trimmed = hardware_value.trim();
+                    if !trimmed.is_empty() {
+                        return Some(trimmed.to_string());
+                    }
+                }
+            }
         }
     }
     None
 }
 
-fn read_kernel_version() -> Option<String> {
-    fs::read_to_string("/proc/version")
-        .ok()
-        .and_then(|s| {
-            let after = s.strip_prefix("Linux version ")?;
-            Some(after.split_whitespace().next()?.to_string())
-        })
-}
+fn read_os_pretty_name() -> Option<String> { Some(init_cached_data().os_pretty_name.clone()?) }
+fn read_kernel_version() -> Option<String> { Some(init_cached_data().kernel_version.clone()?) }
+fn get_os_release_id()   -> Option<String> { Some(init_cached_data().os_release_id.clone()?) }
+fn read_cpu_model()      -> Option<String> { Some(init_cached_data().cpu_model.clone()?) }
+fn read_hostname()       -> Option<String> { Some(init_cached_data().hostname.clone()?) }
 
-fn read_hostname() -> Option<String> {
-    fs::read_to_string("/proc/sys/kernel/hostname")
-        .ok()
-        .map(|s| s.trim().to_string())
-}
-
-fn read_cpu_model() -> Option<String> {
-    let lines = read_lines_from("/proc/cpuinfo")?;
-    for line in &lines {
-        if line.starts_with("model name") {
-            if let Some(val) = line.splitn(2, ':').nth(1) {
-                let compact = val
-                    .split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join(" ");
-                return Some(compact);
-            }
-        }
-    }
-    for line in &lines {
-        if line.starts_with("Hardware") {
-            if let Some(val) = line.splitn(2, ':').nth(1) {
-                return Some(val.trim().to_string());
-            }
-        }
-    }
-    None
-}
-
-fn detect_gpu() -> Option<String> {
-    // пробуем открыть drm линукса
+fn detect_gpu_drm() -> Option<String> {
+    // пробуем открыть drm
     let drm = Path::new("/sys/class/drm");
     if drm.exists() {
         if let Ok(entries) = fs::read_dir(drm) {
@@ -456,13 +558,13 @@ fn detect_gpu() -> Option<String> {
                 let s = name.to_string_lossy();
                 if s.starts_with("card") && !s.contains('-') {
                     let vendor_path = entry.path().join("device/vendor");
-                    let model_path = entry.path().join("device/product");
+                    let model_path  = entry.path().join("device/product");
                     if let (Ok(vendor), Ok(model)) = (
                         fs::read_to_string(&vendor_path),
                         fs::read_to_string(&model_path),
                     ) {
-                        let v = vendor.trim();
-                        let m = model.trim();
+                        let (v, m) = (vendor.trim(), model.trim());
+
                         if !m.is_empty() {
                             return Some(format!("{} {}", v, m));
                         }
@@ -479,6 +581,10 @@ fn detect_gpu() -> Option<String> {
             }
         }
     }
+
+    None
+}
+fn detect_gpu_pci() -> Option<String> {
     // Fallback на pci шину
     if let Some(lines) = read_lines_from("/proc/bus/pci/devices") {
         for line in &lines {
@@ -491,73 +597,91 @@ fn detect_gpu() -> Option<String> {
             }
         }
     }
+
     None
 }
 
-fn read_meminfo() -> (u64, u64, u64, u64) {
-    let mut total = 0u64;
-    let mut available = 0u64;
-    let mut swap_total = 0u64;
-    let mut swap_free = 0u64;
+fn detect_gpu() -> Option<String> {
+    detect_gpu_drm().or_else(detect_gpu_pci)
+}
 
-    if let Some(lines) = read_lines_from("/proc/meminfo") {
-        for line in &lines {
-            let mut parts = line.split_whitespace();
+fn read_meminfo() -> (u64, u64, u64, u64) {
+    // Проверяем ttl кэш
+    if let Some(cached) = MEMORY_CACHE.get() {
+        if cached.is_valid() {
+            return *cached.get().unwrap()
+        }
+    }
+
+    let (mut total,      mut available, 
+         mut swap_total, mut swap_free) =
+        (0u64, 0u64, 0u64, 0u64);
+
+    // Zero-copy чтение файла
+    if let Ok(content) = fs::read_to_string("/proc/meminfo") {
+        for line in content.lines() {
+            let mut parts = line.split_ascii_whitespace();
             match parts.next() {
-                Some("MemTotal:") => total = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
-                Some("MemAvailable:") => {
-                    available = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0)
-                }
-                Some("SwapTotal:") => {
-                    swap_total = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0)
-                }
-                Some("SwapFree:") => {
-                    swap_free = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0)
-                }
+                Some("MemTotal:")       => total        = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
+                Some("MemAvailable:")   => available    = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
+                Some("SwapTotal:")      => swap_total   = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
+                Some("SwapFree:")       => swap_free    = parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
                 _ => {}
             }
         }
     }
 
-    let used = total.saturating_sub(available) / 1024;
-    let total_mb = total / 1024;
-    let swap_used = swap_total.saturating_sub(swap_free) / 1024;
-    let swap_total_mb = swap_total / 1024;
+    let used            = total.saturating_sub(available) / 1024;
+    let total_mb        = total / 1024;
+    let swap_used       = swap_total.saturating_sub(swap_free) / 1024;
+    let swap_total_mb   = swap_total / 1024;
 
-    (used, total_mb, swap_used, swap_total_mb)
+    let result = (used, total_mb, swap_used, swap_total_mb);
+
+    // Кэшируем результат
+    MEMORY_CACHE.set(TtlCache::new(result, Duration::from_secs(120))).ok();
+
+    result
 }
 
 fn read_disk_root() -> (u64, u64) {
+    // Проверяем TTL кэш (5 секунд для диска)
+    if let Some(cached) = DISK_CACHE.get() {
+        if cached.is_valid() {
+            return *cached.get().unwrap();
+        }
+    }
+
     use std::mem::MaybeUninit;
     let path = std::ffi::CString::new("/").unwrap();
     let mut stat: MaybeUninit<libc::statvfs> = MaybeUninit::uninit();
-    unsafe {
+    let result = unsafe {
         if libc::statvfs(path.as_ptr(), stat.as_mut_ptr()) == 0 {
             let s = stat.assume_init();
             let total = s.f_blocks * s.f_frsize / (1024 * 1024 * 1024);
-            let free = s.f_bfree * s.f_frsize / (1024 * 1024 * 1024);
-            return (total.saturating_sub(free), total);
-        }
-    }
-    (0, 0)
+            let free  = s.f_bfree * s.f_frsize /  (1024 * 1024 * 1024);
+            (total.saturating_sub(free), total)
+        } else { (0, 0) }
+    };
+
+    // Кэшируем результат на 5 секунд
+    DISK_CACHE.set(TtlCache::new(result, Duration::from_secs(300))).ok();
+    result
 }
 
 fn read_uptime() -> u64 {
     fs::read_to_string("/proc/uptime")
-        .ok()
-        .and_then(|s| {
-            s.split_whitespace()
-                .next()
+        .ok().and_then(|s| {
+            s.split_whitespace().next()
                 .and_then(|v| v.parse::<f64>().ok())
         })
-        .map(|f| f as u64)
-        .unwrap_or(0)
+        .map(|f| f as u64).unwrap_or(0)
 }
 
 fn format_uptime(secs: u64) -> String {
-    let days = secs / 86400;
+    let days  =  secs / 86400;
     let hours = (secs % 86400) / 3600;
-    let mins = (secs % 3600) / 60;
+    let mins  = (secs % 3600 ) / 60;
     match days {
         0 => format!("{}h {}m", hours, mins),
         _ => format!("{}d {}h {}m", days, hours, mins),
@@ -590,9 +714,11 @@ fn local_ip_for_iface(iface: &str) -> Option<String> {
 
     unsafe {
         let mut addrs: *mut libc::ifaddrs = std::ptr::null_mut();
+
         if libc::getifaddrs(&mut addrs) != 0 {
             return None;
         }
+
         let mut cur = addrs;
         let mut result = None;
         while !cur.is_null() {
@@ -601,8 +727,9 @@ fn local_ip_for_iface(iface: &str) -> Option<String> {
                 let name = std::ffi::CStr::from_ptr(a.ifa_name)
                     .to_string_lossy();
                 if name == iface && (*a.ifa_addr).sa_family as i32 == libc::AF_INET {
-                    let sin = a.ifa_addr as *const libc::sockaddr_in;
-                    let ip_u32 = u32::from_be((*sin).sin_addr.s_addr);
+                    let sin     = a.ifa_addr as *const libc::sockaddr_in;
+                    let ip_u32  = u32::from_be((*sin).sin_addr.s_addr);
+
                     result = Some(Ipv4Addr::from(ip_u32).to_string());
                     break;
                 }
@@ -630,12 +757,7 @@ fn builtin_ascii(_width: usize, distro_override: Option<&str>) -> Vec<String> {
     let id = if let Some(distro) = distro_override {
         distro.to_lowercase()
     } else {
-        fs::read_to_string("/etc/os-release")
-            .unwrap_or_default()
-            .lines()
-            .find(|l| l.starts_with("ID="))
-            .map(|l| l["ID=".len()..].trim_matches('"').to_lowercase())
-            .unwrap_or_default()
+        get_os_release_id().unwrap_or_default()
     };
 
     let art: &[&str] = match id.as_str() {
@@ -979,7 +1101,7 @@ fn load_config() -> Config {
         if let Ok(content) = fs::read_to_string(path) {
             match toml::from_str::<Config>(&content) {
                 Ok(cfg) => return cfg,
-                Err(e) => {
+                Err(e)  => {
                     eprintln!("rushfetch: config parse error in {}: {}", path, e);
                 }
             }
@@ -990,8 +1112,9 @@ fn load_config() -> Config {
 }
 
 fn main() {
-    let config = load_config();
-    let data = SysData::collect();
+    let config   = load_config();
+    let data     = SysData::collect();
     let renderer = Renderer::new(&config, &data);
+
     renderer.render();
 }
