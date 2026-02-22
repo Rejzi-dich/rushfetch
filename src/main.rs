@@ -1,8 +1,13 @@
-// ──────────────────────────────────────────────────────────────
-// rushfetch - fast, minimal system info tool
-// Reads system data directly from /proc and /sys - no shell spawning
-// for built-in fields. Shell is only used for user-defined custom_fields.
-// ──────────────────────────────────────────────────────────────
+// rushfetch - блейзинговый тул для инфы о системе
+/*
+ | Project: Rush fetch (rushfetch)
+ | Description: blazing fast tool for outputting information on Linux systems on blazing rast
+ | Authors: Rejzi-dich
+ |
+ | SPDX-License-Identifier: GPL-3.0-or-later
+ | Website: None
+ | Copyright: Rejzi-dich
+ */
 
 use colored::*;
 use serde::{Deserialize, Serialize};
@@ -10,12 +15,33 @@ use std::env;
 use std::fs;
 use std::io::{self, BufRead};
 use std::path::Path;
-use unicode_width::{UnicodeWidthStr, UnicodeWidthChar};
 
-// ─── Config Structures ───────────────────────────────────────────────────
+// функция для подсчёта ширины символов
+fn unicode_str_width(s: &str) -> usize {
+    s.chars().map(|c| {
+        let code = c as u32;
+        // ASCII ширина 1 символ
+        if code <= 0x7F { 1 }
+        // китайские/корейские/японские иероглифы и другие жирные символы - 2 ширины  
+        else if 
+            (0x1100..=0x115F).contains(&code) ||
+            (0x2E80..=0x2EFF).contains(&code) ||
+            (0x3000..=0x30FF).contains(&code) ||
+            (0x4E00..=0x9FFF).contains(&code) ||
+            (0xAC00..=0xD7AF).contains(&code) ||
+            (0xF900..=0xFAFF).contains(&code) ||
+            (0xFF00..=0xFFEF).contains(&code) { 2 }
+        // Эмодзи - 2 ширины - блять, кто использует эмодзи в артах терминала. это же ужасно выглядит. перестанте
+        // поэтому я запрещаю вам использовать их в терминале
+        else if (0x1F000..=0x1FAFF).contains(&code) { 222 }
+        // Остальное - 1 ширина
+        else { 1 }
+    }).sum()
+}
 
-/// All built-in info fields. Serde uses lowercase/snake_case names in TOML.
-#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+// Конфигурационные структуры
+// Поля информации
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum InfoField {
     Os,
@@ -40,9 +66,9 @@ pub enum InfoField {
 pub enum BuiltinCategory {
     System,
     Hardware,
-    Resources,
-    Environment,
-    Network,
+    Res,
+    Env,
+    Net,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -50,8 +76,6 @@ pub struct CategoryConfig {
     pub category: BuiltinCategory,
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Override the displayed fields and their order.
-    /// If omitted, the default set for this category is used.
     #[serde(default)]
     pub fields: Vec<InfoField>,
 }
@@ -64,17 +88,15 @@ pub struct CustomField {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AsciiConfig {
-    /// Enable ASCII art on the left side
+    // Включает отображение ascii
     #[serde(default = "default_true")]
     pub enabled: bool,
-    /// Path to a plain-text ASCII file. If None, built-in distro art is used.
+    // путь к фалу с артом
     pub file: Option<String>,
-    /// Override distro detection. If set, use this distro's built-in art.
+    // указывает встренный асции какого дистриубтива отображать. если не указть будет опеределять сам
     pub distro: Option<String>,
-    /// Width (columns) reserved for the ASCII block. Default 20.
     #[serde(default = "default_ascii_width")]
     pub width: usize,
-    /// Color for the ASCII art
     #[serde(default = "default_accent_color")]
     pub color: String,
 }
@@ -91,8 +113,7 @@ pub struct Theme {
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Language {
-    English,
-    Russian,
+    English, Russian,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -103,7 +124,7 @@ pub struct Config {
     pub theme: Theme,
     #[serde(default)]
     pub ascii: AsciiConfig,
-    /// Show category/field icons
+    // иконки категорий
     #[serde(default = "default_true")]
     pub show_icons: bool,
     #[serde(default = "default_categories")]
@@ -112,17 +133,9 @@ pub struct Config {
     pub custom_fields: Vec<CustomField>,
 }
 
-// ─── Defaults ────────────────────────────────────────────────────────────
-
-fn default_true() -> bool {
-    true
-}
-fn default_ascii_width() -> usize {
-    20
-}
-fn default_accent_color() -> String {
-    "bright_cyan".to_string()
-}
+fn default_true()           -> bool     { true }
+fn default_ascii_width()    -> usize    { 20 }
+fn default_accent_color()   -> String   { "bright_cyan".to_string() }
 
 impl Default for Language {
     fn default() -> Self {
@@ -180,59 +193,59 @@ fn default_categories() -> Vec<CategoryConfig> {
             fields: vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Resources,
+            category: BuiltinCategory::Res,
             enabled: true,
             fields: vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Environment,
+            category: BuiltinCategory::Env,
             enabled: true,
             fields: vec![],
         },
         CategoryConfig {
-            category: BuiltinCategory::Network,
+            category: BuiltinCategory::Net,
             enabled: false,
             fields: vec![],
         },
     ]
 }
 
-// ─── Default fields per category ─────────────────────────────────────────
-
 fn default_fields(cat: BuiltinCategory) -> &'static [InfoField] {
     match cat {
-        BuiltinCategory::System => &[InfoField::Os, InfoField::Kernel, InfoField::Arch],
-        BuiltinCategory::Hardware => &[InfoField::Host, InfoField::Cpu, InfoField::Gpu],
-        BuiltinCategory::Resources => {
-            &[InfoField::Memory, InfoField::Swap, InfoField::Disk]
-        }
-        BuiltinCategory::Environment => &[
-            InfoField::Uptime,
-            InfoField::Shell,
-            InfoField::Terminal,
-            InfoField::De,
+        BuiltinCategory::System => &[
+            InfoField::Os,      InfoField::Kernel,  InfoField::Arch
         ],
-        BuiltinCategory::Network => &[InfoField::LocalIp, InfoField::PublicIp],
+        BuiltinCategory::Hardware => &[
+            InfoField::Host,    InfoField::Cpu,     InfoField::Gpu
+        ],
+        BuiltinCategory::Res => &[
+            InfoField::Memory,  InfoField::Swap,    InfoField::Disk
+        ],
+        BuiltinCategory::Env => &[
+            InfoField::Uptime,  InfoField::Shell,
+            InfoField::Terminal,InfoField::De,
+        ],
+        BuiltinCategory::Net => &[
+            InfoField::LocalIp, InfoField::PublicIp
+        ],
     }
 }
 
-// ─── Localization ────────────────────────────────────────────────────────
-
-fn localize_category(cat: BuiltinCategory, lang: Language) -> &'static str {
+fn localize_category(category: BuiltinCategory, lang: Language) -> &'static str {
     match lang {
-        Language::English => match cat {
-            BuiltinCategory::System => "System",
-            BuiltinCategory::Hardware => "Hardware",
-            BuiltinCategory::Resources => "Resources",
-            BuiltinCategory::Environment => "Environment",
-            BuiltinCategory::Network => "Network",
+        Language::English => match category {
+            BuiltinCategory::System     => "System",
+            BuiltinCategory::Hardware   => "Hardware",
+            BuiltinCategory::Res        => "Resources",
+            BuiltinCategory::Env        => "Environment",
+            BuiltinCategory::Net        => "Network",
         },
-        Language::Russian => match cat {
-            BuiltinCategory::System => "Система",
-            BuiltinCategory::Hardware => "Железо",
-            BuiltinCategory::Resources => "Ресурсы",
-            BuiltinCategory::Environment => "Окружение",
-            BuiltinCategory::Network => "Сеть",
+        Language::Russian => match category {
+            BuiltinCategory::System     => "Система",
+            BuiltinCategory::Hardware   => "Железо",
+            BuiltinCategory::Res        => "Ресурсы",
+            BuiltinCategory::Env        => "Окружение",
+            BuiltinCategory::Net        => "Сеть",
         },
     }
 }
@@ -240,73 +253,71 @@ fn localize_category(cat: BuiltinCategory, lang: Language) -> &'static str {
 fn localize_field(field: InfoField, lang: Language) -> &'static str {
     match lang {
         Language::English => match field {
-            InfoField::Os => "OS",
-            InfoField::Kernel => "Kernel",
-            InfoField::Arch => "Arch",
-            InfoField::Host => "Host",
-            InfoField::Cpu => "CPU",
-            InfoField::Gpu => "GPU",
-            InfoField::Memory => "RAM",
-            InfoField::Swap => "Swap",
-            InfoField::Disk => "Disk",
-            InfoField::Uptime => "Uptime",
-            InfoField::Shell => "Shell",
-            InfoField::Terminal => "Terminal",
-            InfoField::De => "DE / WM",
-            InfoField::LocalIp => "Local IP",
-            InfoField::PublicIp => "Public IP",
+            InfoField::Os           => "OS",
+            InfoField::Kernel       => "Kernel",
+            InfoField::Arch         => "Arch",
+            InfoField::Host         => "Host",
+            InfoField::Cpu          => "CPU",
+            InfoField::Gpu          => "GPU",
+            InfoField::Memory       => "RAM",
+            InfoField::Swap         => "Swap",
+            InfoField::Disk         => "Disk",
+            InfoField::Uptime       => "Uptime",
+            InfoField::Shell        => "Shell",
+            InfoField::Terminal     => "Terminal",
+            InfoField::De           => "DE / WM",
+            InfoField::LocalIp      => "Local IP",
+            InfoField::PublicIp     => "Public IP",
         },
         Language::Russian => match field {
-            InfoField::Os => "ОС",
-            InfoField::Kernel => "Ядро",
-            InfoField::Arch => "Архитектура",
-            InfoField::Host => "Имя ПК",
-            InfoField::Cpu => "Проц",
-            InfoField::Gpu => "Видеокарта",
-            InfoField::Memory => "Память",
-            InfoField::Swap => "Своп",
-            InfoField::Disk => "Диск",
-            InfoField::Uptime => "Аптайм",
-            InfoField::Shell => "Шелл",
-            InfoField::Terminal => "Терминал",
-            InfoField::De => "ДЕ / ВМ",
-            InfoField::LocalIp => "Локал IP",
-            InfoField::PublicIp => "Внешний IP",
+            InfoField::Os           => "ОС",
+            InfoField::Kernel       => "Ядро",
+            InfoField::Arch         => "Архитектура",
+            InfoField::Host         => "Имя ПК",
+            InfoField::Cpu          => "Проц",
+            InfoField::Gpu          => "Гпу",
+            InfoField::Memory       => "Память",
+            InfoField::Swap         => "Своп",
+            InfoField::Disk         => "Диск",
+            InfoField::Uptime       => "Аптайм",
+            InfoField::Shell        => "Шелл",
+            InfoField::Terminal     => "Терминал",
+            InfoField::De           => "ДЕ / ВМ",
+            InfoField::LocalIp      => "Локал IP",
+            InfoField::PublicIp     => "Внешний IP",
         },
     }
 }
 
-fn category_icon(cat: BuiltinCategory) -> &'static str {
-    match cat {
-        BuiltinCategory::System => "󰍛 ",
-        BuiltinCategory::Hardware => "󰘚 ",
-        BuiltinCategory::Resources => "󰓅 ",
-        BuiltinCategory::Environment => "󰆍 ",
-        BuiltinCategory::Network => "󰀂 ",
+fn category_icon(category: BuiltinCategory) -> &'static str {
+    match category {
+        // тут нордовские иконки, в некоторых местах это может выглядеть как квадратики.
+        BuiltinCategory::System     => "󰍛 ", 
+        BuiltinCategory::Hardware   => "󰘚 ",
+        BuiltinCategory::Res        => "󰓅 ",
+        BuiltinCategory::Env        => "󰆍 ",
+        BuiltinCategory::Net        => "󰀂 ",
     }
 }
 
-// ─── Fast system info - NO shell for built-in fields ─────────────────────
-
-/// All data collected once at startup.
 pub struct SysData {
-    pub os: Option<String>,
-    pub kernel: Option<String>,
-    pub arch: &'static str,
-    pub host: Option<String>,
-    pub cpu: Option<String>,
-    pub gpu: Option<String>,
-    pub memory_used_mb: u64,
-    pub memory_total_mb: u64,
-    pub swap_used_mb: u64,
-    pub swap_total_mb: u64,
-    pub disk_used_gb: u64,
-    pub disk_total_gb: u64,
-    pub uptime_secs: u64,
-    pub shell: Option<String>,
-    pub terminal: Option<String>,
-    pub de: Option<String>,
-    pub local_ip: Option<String>,
+    pub os:                 Option<String>,
+    pub kernel:             Option<String>,
+    pub arch:             &'static str,
+    pub host:               Option<String>,
+    pub cpu:                Option<String>,
+    pub gpu:                Option<String>,
+    pub memory_used_mb:     u64,
+    pub memory_total_mb:    u64,
+    pub swap_used_mb:       u64,
+    pub swap_total_mb:      u64,
+    pub disk_used_gb:       u64,
+    pub disk_total_gb:      u64,
+    pub uptime_secs:        u64,
+    pub shell:              Option<String>,
+    pub terminal:           Option<String>,
+    pub de:                 Option<String>,
+    pub local_ip:           Option<String>,
 }
 
 impl SysData {
@@ -316,21 +327,24 @@ impl SysData {
         let (disk_used_gb, disk_total_gb) = read_disk_root();
 
         Self {
-            os: read_os_pretty_name(),
+            uptime_secs: read_uptime(),
+            terminal:    env::var("TERM").ok(),
+
             kernel: read_kernel_version(),
-            arch: std::env::consts::ARCH,
-            host: read_hostname(),
-            cpu: read_cpu_model(),
-            gpu: detect_gpu(),
+            shell:  shell_name(),
+            arch:   std::env::consts::ARCH,
+            host:   read_hostname(),
+            cpu:    read_cpu_model(),
+            gpu:    detect_gpu(),
+            os:     read_os_pretty_name(),
+
             memory_used_mb,
             memory_total_mb,
             swap_used_mb,
             swap_total_mb,
             disk_used_gb,
             disk_total_gb,
-            uptime_secs: read_uptime(),
-            shell: shell_name(),
-            terminal: env::var("TERM").ok(),
+
             de: env::var("XDG_CURRENT_DESKTOP")
                 .or_else(|_| env::var("DESKTOP_SESSION"))
                 .ok(),
@@ -340,13 +354,13 @@ impl SysData {
 
     pub fn get(&self, field: InfoField) -> Option<String> {
         match field {
-            InfoField::Os => self.os.clone(),
-            InfoField::Kernel => self.kernel.clone(),
-            InfoField::Arch => Some(self.arch.to_string()),
-            InfoField::Host => self.host.clone(),
-            InfoField::Cpu => self.cpu.clone(),
-            InfoField::Gpu => self.gpu.clone(),
-            InfoField::Memory => Some(format!(
+            InfoField::Os       => self.os.clone(),
+            InfoField::Kernel   => self.kernel.clone(),
+            InfoField::Arch     => Some(self.arch.to_string()),
+            InfoField::Host     => self.host.clone(),
+            InfoField::Cpu      => self.cpu.clone(),
+            InfoField::Gpu      => self.gpu.clone(),
+            InfoField::Memory   => Some(format!(
                 "{} MB / {} MB",
                 self.memory_used_mb, self.memory_total_mb
             )),
@@ -364,17 +378,15 @@ impl SysData {
                 "{} GB / {} GB",
                 self.disk_used_gb, self.disk_total_gb
             )),
-            InfoField::Uptime => Some(format_uptime(self.uptime_secs)),
-            InfoField::Shell => self.shell.clone(),
+            InfoField::Uptime   => Some(format_uptime(self.uptime_secs)),
+            InfoField::Shell    => self.shell.clone(),
             InfoField::Terminal => self.terminal.clone(),
-            InfoField::De => self.de.clone(),
-            InfoField::LocalIp => self.local_ip.clone(),
+            InfoField::De       => self.de.clone(),
+            InfoField::LocalIp  => self.local_ip.clone(),
             InfoField::PublicIp => fetch_public_ip(),
         }
     }
 }
-
-// ─── `/proc` and `/sys` readers - zero shell invocations ─────────────────
 
 fn read_lines_from(path: &str) -> Option<Vec<String>> {
     let file = fs::File::open(path).ok()?;
@@ -400,7 +412,6 @@ fn read_kernel_version() -> Option<String> {
     fs::read_to_string("/proc/version")
         .ok()
         .and_then(|s| {
-            // "Linux version 6.x.y-..." - extract up to the first space after "version "
             let after = s.strip_prefix("Linux version ")?;
             Some(after.split_whitespace().next()?.to_string())
         })
@@ -417,7 +428,6 @@ fn read_cpu_model() -> Option<String> {
     for line in &lines {
         if line.starts_with("model name") {
             if let Some(val) = line.splitn(2, ':').nth(1) {
-                // Compact: remove excessive spaces
                 let compact = val
                     .split_whitespace()
                     .collect::<Vec<_>>()
@@ -426,7 +436,6 @@ fn read_cpu_model() -> Option<String> {
             }
         }
     }
-    // ARM / other: try "Hardware"
     for line in &lines {
         if line.starts_with("Hardware") {
             if let Some(val) = line.splitn(2, ':').nth(1) {
@@ -438,7 +447,7 @@ fn read_cpu_model() -> Option<String> {
 }
 
 fn detect_gpu() -> Option<String> {
-    // Try /sys/class/drm first - no shell needed
+    // пробуем открыть drm линукса
     let drm = Path::new("/sys/class/drm");
     if drm.exists() {
         if let Ok(entries) = fs::read_dir(drm) {
@@ -458,12 +467,10 @@ fn detect_gpu() -> Option<String> {
                             return Some(format!("{} {}", v, m));
                         }
                     }
-                    // Try uevent for GPU name
                     let uevent_path = entry.path().join("device/uevent");
                     if let Ok(ue) = fs::read_to_string(&uevent_path) {
                         for l in ue.lines() {
                             if l.starts_with("PCI_ID=") {
-                                // not that useful without a database - fall through
                                 break;
                             }
                         }
@@ -472,16 +479,13 @@ fn detect_gpu() -> Option<String> {
             }
         }
     }
-    // Fallback: read /proc/bus/pci/devices and match known GPU classes (0x0300)
-    // This is still pure file I/O, no shell.
+    // Fallback на pci шину
     if let Some(lines) = read_lines_from("/proc/bus/pci/devices") {
         for line in &lines {
             let cols: Vec<&str> = line.split('\t').collect();
             if cols.len() >= 2 {
-                let class_vendor = cols[1]; // e.g. "03000012"
+                let class_vendor = cols[1];
                 if class_vendor.starts_with("0300") || class_vendor.starts_with("0302") {
-                    // We have a VGA device but no name from this file.
-                    // Return a generic marker so the field appears rather than vanishing.
                     return Some("(detected, install lspci for details)".to_string());
                 }
             }
@@ -567,8 +571,6 @@ fn shell_name() -> Option<String> {
 }
 
 fn read_local_ip() -> Option<String> {
-    // Read from /proc/net/route - find default gateway interface, then get its IP
-    // from /proc/net/fib_trie or /proc/net/if_inet6 - pure file I/O.
     let route = fs::read_to_string("/proc/net/route").ok()?;
     let mut iface = None;
     for line in route.lines().skip(1) {
@@ -580,17 +582,12 @@ fn read_local_ip() -> Option<String> {
     }
     let iface = iface?;
 
-    // Read IP from /proc/net/fib_trie - find LOCAL entries for our interface
-    // Simpler: read /proc/net/if_inet6 or just do getifaddrs via libc
     local_ip_for_iface(&iface)
 }
 
 fn local_ip_for_iface(iface: &str) -> Option<String> {
     use std::net::Ipv4Addr;
-    // /proc/net/fib_trie is complex; use /proc/net/arp as alternative for default route IPs
-    // Cleanest pure-rust approach: parse /proc/net/if_inet6 for IPv6 or read from
-    // /sys/class/net/<iface>/... - no IP address file exists there.
-    // Use libc getifaddrs instead:
+
     unsafe {
         let mut addrs: *mut libc::ifaddrs = std::ptr::null_mut();
         if libc::getifaddrs(&mut addrs) != 0 {
@@ -618,8 +615,6 @@ fn local_ip_for_iface(iface: &str) -> Option<String> {
 }
 
 fn fetch_public_ip() -> Option<String> {
-    // Public IP requires network - only requested if field is in config
-    // Uses a simple TCP connection - no shell
     use std::io::{Read, Write};
     use std::net::TcpStream;
     let mut stream = TcpStream::connect("ifconfig.me:80").ok()?;
@@ -631,9 +626,6 @@ fn fetch_public_ip() -> Option<String> {
     body.split("\r\n\r\n").nth(1).map(|s| s.trim().to_string())
 }
 
-// ─── ASCII Art ───────────────────────────────────────────────────────────
-
-/// Built-in minimal distro art. First checks config, then detects from /etc/os-release ID field.
 fn builtin_ascii(_width: usize, distro_override: Option<&str>) -> Vec<String> {
     let id = if let Some(distro) = distro_override {
         distro.to_lowercase()
@@ -669,6 +661,19 @@ fn builtin_ascii(_width: usize, distro_override: Option<&str>) -> Vec<String> {
             "`++:.                           `-/+/",
             ".`                                 ` ",
             "                                     ",
+        ],
+        "arch-mini" => &[
+            "                  ",
+            "        /\\        ",
+            "       /  \\       ",
+            "      /    \\      ",
+            "     _\\     \\     ",
+            "    /        \\    ",
+            "   /          \\   ",
+            "  /     __   \\_\\  ",
+            " /     /  \\     \\ ",
+            "/__,--'    '--,__\\",
+            "                  ",
         ],
         "apple" | "macos" | "macbook" | "yablocoder" => &[
             "                              ",
@@ -715,17 +720,17 @@ fn builtin_ascii(_width: usize, distro_override: Option<&str>) -> Vec<String> {
         ],
     };
 
-    // Find the maximum width in the ASCII art
+    // Находим максимальную ширину в ASCII art
     let max_width = art.iter()
-        .map(|l| l.width())
+        .map(|l| unicode_str_width(l))
         .max()
         .unwrap_or(0);
 
     art.iter().map(|l| {
         let s = l.to_string();
-        // pad to max width using unicode width
-        if s.width() < max_width {
-            let padding = max_width - s.width();
+        // дополняем до максимальной ширины
+        if unicode_str_width(&s) < max_width {
+            let padding = max_width - unicode_str_width(&s);
             format!("{}{}", s, " ".repeat(padding))
         } else {
             s.clone()
@@ -740,27 +745,27 @@ fn load_ascii_art(cfg: &AsciiConfig) -> Vec<String> {
     if let Some(path) = &cfg.file {
         if let Ok(content) = fs::read_to_string(path) {
             let lines: Vec<&str> = content.lines().collect();
-            // Find the maximum width in the ASCII art
+            // Находим максимальную ширину в ASCII art
             let max_width = lines.iter()
-                .map(|l| l.width())
+                .map(|l| unicode_str_width(l))
                 .max()
                 .unwrap_or(0);
             
-            // Use the larger of config width or actual art width
+            // Используем большую из ширин: конфига или реальной
             let effective_width = cfg.width.max(max_width);
             
             return lines.iter().map(|l| {
                 let s = l.to_string();
-                // pad to effective width using unicode width
-                if s.width() < effective_width {
-                    let padding = effective_width - s.width();
+                // дополняем до эффективной ширины
+                if unicode_str_width(&s) < effective_width {
+                    let padding = effective_width - unicode_str_width(&s);
                     format!("{}{}", s, " ".repeat(padding))
                 } else {
-                    // Truncate by unicode width, not by char count
+                    // Обрезаем по ширине символа
                     let mut result = String::new();
                     let mut current_width = 0;
                     for c in s.chars() {
-                        let char_width = c.width().unwrap_or(0);
+                        let char_width = if c as u32 <= 0x7F { 1 } else { 2 };
                         if current_width + char_width > effective_width {
                             break;
                         }
@@ -775,32 +780,27 @@ fn load_ascii_art(cfg: &AsciiConfig) -> Vec<String> {
     builtin_ascii(cfg.width, cfg.distro.as_deref())
 }
 
-
-// ─── Color helper ────────────────────────────────────────────────────────
-
 fn colorize<'a>(text: &'a str, color: &str) -> ColoredString {
     match color {
-        "black" => text.black(),
-        "red" => text.red(),
-        "green" => text.green(),
-        "yellow" => text.yellow(),
-        "blue" => text.blue(),
-        "magenta" => text.magenta(),
-        "cyan" => text.cyan(),
-        "white" => text.white(),
-        "bright_black" => text.bright_black(),
-        "bright_red" => text.bright_red(),
-        "bright_green" => text.bright_green(),
-        "bright_yellow" => text.bright_yellow(),
-        "bright_blue" => text.bright_blue(),
-        "bright_magenta" => text.bright_magenta(),
-        "bright_cyan" => text.bright_cyan(),
-        "bright_white" => text.bright_white(),
+        "black"             => text.black(),
+        "red"               => text.red(),
+        "green"             => text.green(),
+        "yellow"            => text.yellow(),
+        "blue"              => text.blue(),
+        "magenta"           => text.magenta(),
+        "cyan"              => text.cyan(),
+        "white"             => text.white(),
+        "bright_black"      => text.bright_black(),
+        "bright_red"        => text.bright_red(),
+        "bright_green"      => text.bright_green(),
+        "bright_yellow"     => text.bright_yellow(),
+        "bright_blue"       => text.bright_blue(),
+        "bright_magenta"    => text.bright_magenta(),
+        "bright_cyan"       => text.bright_cyan(),
+        "bright_white"      => text.bright_white(),
         _ => text.white(),
     }
 }
-
-// ─── Rendering ───────────────────────────────────────────────────────────
 
 struct Renderer<'a> {
     config: &'a Config,
@@ -818,7 +818,6 @@ impl<'a> Renderer<'a> {
         Self { config, data, ascii_lines }
     }
 
-    /// Build all info lines (strings, pre-colored) that appear on the right
     fn build_info_lines(&self) -> Vec<String> {
         let lang = self.config.language;
         let theme = &self.config.theme;
@@ -839,14 +838,14 @@ impl<'a> Renderer<'a> {
         ));
         lines.push(String::new());
 
-        for cat_cfg in &self.config.categories {
-            if !cat_cfg.enabled {
+        for category_cfg in &self.config.categories {
+            if !category_cfg.enabled {
                 continue;
             }
-            let cat = cat_cfg.category;
-            let cat_name = localize_category(cat, lang);
+            let category = category_cfg.category;
+            let category_name = localize_category(category, lang);
             let icon = if self.config.show_icons {
-                category_icon(cat)
+                category_icon(category)
             } else {
                 ""
             };
@@ -854,13 +853,13 @@ impl<'a> Renderer<'a> {
             lines.push(format!(
                 "{}{}",
                 colorize(icon, &theme.primary),
-                colorize(cat_name, &theme.primary).bold()
+                colorize(category_name, &theme.primary).bold()
             ));
 
-            let fields: &[InfoField] = if cat_cfg.fields.is_empty() {
-                default_fields(cat)
+            let fields: &[InfoField] = if category_cfg.fields.is_empty() {
+                default_fields(category)
             } else {
-                &cat_cfg.fields
+                &category_cfg.fields
             };
 
             for &field in fields {
@@ -877,7 +876,7 @@ impl<'a> Renderer<'a> {
             lines.push(String::new());
         }
 
-        // Custom fields
+        // Кастомные поля
         if !self.config.custom_fields.is_empty() {
             let icon = if self.config.show_icons { "󰆾 " } else { "" };
             lines.push(format!(
@@ -905,7 +904,6 @@ impl<'a> Renderer<'a> {
         let info_lines = self.build_info_lines();
 
         if self.ascii_lines.is_empty() {
-            // No ascii - just print info lines directly
             println!();
             for line in &info_lines {
                 println!(" {}", line);
@@ -914,13 +912,13 @@ impl<'a> Renderer<'a> {
             return;
         }
 
-        // Calculate actual ASCII width from the loaded art
+        // Считаем реальную ширину ASCII art
         let actual_ascii_width = self.ascii_lines.iter()
-            .map(|l| l.width())
+            .map(|l| unicode_str_width(l))
             .max()
             .unwrap_or(0);
         
-        let ascii_w = actual_ascii_width + 2; // +2 for padding
+        let ascii_w = actual_ascii_width + 1; // 1 на отступ
         let gap = "  ";
         let total = self.ascii_lines.len().max(info_lines.len());
 
@@ -937,8 +935,6 @@ impl<'a> Renderer<'a> {
     }
 }
 
-// ─── Shell execution (_ONLY_ blyat for custom_fields) ────────────────────
-
 fn shell_exec(cmd: &str) -> Option<String> {
     std::process::Command::new("sh")
         .arg("-c")
@@ -949,8 +945,6 @@ fn shell_exec(cmd: &str) -> Option<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
 }
-
-// ─── whoami without crate (direct env / proc reads) ──────────────────────
 
 fn whoami_username() -> String {
     env::var("USER")
@@ -969,8 +963,6 @@ fn whoami_hostname() -> String {
         .map(|s| s.trim().to_string())
         .unwrap_or_else(|_| "localhost".to_string())
 }
-
-// ─── Config loading ──────────────────────────────────────────────────────
 
 fn load_config() -> Config {
     let paths: Vec<String> = vec![
@@ -996,8 +988,6 @@ fn load_config() -> Config {
 
     Config::default()
 }
-
-// ─── Entry point ─────────────────────────────────────────────────────────
 
 fn main() {
     let config = load_config();
