@@ -334,9 +334,7 @@ impl<T> TtlCache<T> {
     fn get(&self) -> Option<&T> {
         if self.timestamp.elapsed() < self.ttl {
             Some(&self.data)
-        } else {
-            None
-        }
+        } else { None }
     }
     
     fn is_valid(&self) -> bool {
@@ -372,14 +370,9 @@ impl SysData {
         let uptime_secs = uptime_handle.join().unwrap();
 
         Self {
-            uptime_secs,
-            terminal,
-            kernel,
-            shell,
-            arch,
-            host,
-            cpu,
-            os,
+            uptime_secs, terminal,
+            kernel, shell,  cpu,
+            arch,   host,   os,
             local_ip,
             memory_used_mb,
             memory_total_mb,
