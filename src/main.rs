@@ -1,4 +1,3 @@
-// rushfetch - блейзинговый тул для инфы о системе
 /*
  | Project: Rush fetch (rushfetch)
  | Description: blazing fast tool for outputting information on Linux systems on blazing rast
