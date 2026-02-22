@@ -95,20 +95,21 @@ language = "russian"  # or "english"
 
 # Configure colors
 [theme]
-primary = "bright_yellow"    # Icons and category titles
-secondary = "bright_cyan"    # Field names
-accent = "bright_magenta"    # user@hostname
-text = "bright_white"        # Values
+primary   = "green"   # Icons and category titles
+secondary = "white"   # Field names
+accent    = "green"   # user@hostname
+text      = "white"   # Values
+separator = "white"   # separator
 
 # Enable/disable categories
 [[categories]]
-name = "system"
+label = "system"
 enabled = true
 subcategories = ["os", "kernel", "arch"]
 
 # Add your own fields
 [[custom_fields]]
-name = "Packages"
+label = "Packages"
 command = "pacman -Q | wc -l"
 ```
 
