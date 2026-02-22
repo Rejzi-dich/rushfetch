@@ -60,7 +60,7 @@ paru -S rushfetch
 ### From source
 
 ```bash
-git clone https://github.com/yourusername/rushfetch.git
+git clone https://github.com/Rejzi-dich/rushfetch.git
 cd rushfetch
 cargo build --release
 sudo cp target/release/rushfetch /usr/bin/
