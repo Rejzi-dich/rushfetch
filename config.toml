@@ -3,15 +3,15 @@
 # Location: ~/.config/rushfetch/config.toml  (or global /etc/rushfetch/config.toml)
 # ============================================================================
 
-# ─── Language ────────────────────────────────────────────────────────────────
+# --- Language --------------------------------------------------------
 # "english" | "russian"
 language = "english"
 
-# ─── Icons ───────────────────────────────────────────────────────────────────
+# --- Icons ------------------------------------------------------------
 # Set to false if your terminal doesn't support Nerd Fonts
 show_icons = true
 
-# ─── Color Theme ─────────────────────────────────────────────────────────────
+# --- Color Theme ------------------------------------------------------
 # Colors: black red green yellow blue magenta cyan white
 #         bright_black bright_red bright_green bright_yellow
 #         bright_blue bright_magenta bright_cyan bright_white
@@ -22,7 +22,7 @@ show_icons = true
 # text      - field values
 # separator - the line under user@host
 
-# ─── Preset themes (uncomment _only_ one block) ─────────────────────────────────────
+# --- Preset themes (uncomment _only_ one block) --------------------
 
 # Default: Fresh green
 [theme]
@@ -64,13 +64,13 @@ separator = "white"
 # text = "bright_white"
 # separator = "bright_black"
 
-# ─── ASCII Art ───────────────────────────────────────────────────────────────
+# --- ASCII Art -------------------------------------------─
 [ascii]
 enabled = true          # Set to false to disable ASCII art entirely
 # file  = "~/.config/rushfetch/ascii.txt"   # Custom ASCII file (optional)
 color   = "green" # Color of the ASCII art
 
-# ─── Categories ──────────────────────────────────────────────────────────────
+# --- Categories -------------------------------------------
 # category - one of: system | hardware | resources | environment | network
 # enabled  - true/false
 # fields   - list of fields to show (omit to use defaults for this category)
@@ -107,7 +107,7 @@ category = "network"
 enabled  = false        # Fetching public_ip requires internet and is slow
 # fields = ["local_ip", "public_ip"]
 
-# ─── Custom Fields ───────────────────────────────────────────────────────────
+# --- Custom Fields ----------------------------------------
 # Arbitrary shell commands - the ONLY place a shell is spawned.
 # Output is trimmed and shown next to the label.
 #

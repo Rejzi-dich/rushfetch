@@ -1,21 +1,21 @@
-# 🚀 rushfetch
+# ⚡ rushfetch
 
 > A fast system information utility written in Rust. Rush in like a hurricane, grab the info!
 
 **rushfetch** is a modern utility for displaying your system's characteristics in a clean, customizable format. Written in Rust for maximum performance.
 
-## ✨ Features
+## Features
 
-- ⚡ **BLAZING fast** - Written in Rust, compiles to native code
-- 🎨 **Customizable themes** - Full color control with ready presets (Gruvbox, Dracula, Nord, etc.)
-- 🌍 **Multiple languages** - Support for English and Russian
-- 📦 **Modular categories** - Enable/disable entire categories or individual fields
-- 🛠️ **Custom fields** - Add your own commands and show what you want
-- 🎯 **Minimal dependencies** - Only the essentials
-- 📝 **Self-documenting config** - No need to read boring docs
+- **BLAZING fast** - Written in Rust, compiles to native code
+- **Customizable themes** - Full color control with ready presets (Gruvbox, Dracula, Nord, etc.)
+- **Multiple languages** - Support for English and Russian
+- **Modular categories** - Enable/disable entire categories or individual fields
+- **Custom fields** - Add your own commands and show what you want
+- **Minimal dependencies** - Only the essentials
+- **Self-documenting config** - No need to read boring docs
 
-## 📸 Screenshots
-
+## Screenshots
+![plot](./screens/rushfetch_1.png)
 ```
 
                                            rejzi@mac
@@ -46,10 +46,9 @@
                                              Flatpaks ....... 28
                                              Snaps .......... 18
 ```
-![plot](./screens/rushfetch_1.png)
 
 
-## 🚀 Installation
+## Installation
 
 ### Arch-based (AUR)
 
@@ -70,7 +69,7 @@ sudo mkdir -p /etc/rushfetch
 sudo cp config.toml /etc/rushfetch/
 ```
 
-## 🎮 Usage
+## Usage
 
 Just run:
 ```bash
@@ -87,7 +86,7 @@ cp /etc/rushfetch/config.toml ~/.config/rushfetch/
 
 Then edit `~/.config/rushfetch/config.toml` - everything is described there with examples!
 
-## ⚙️ Configuration
+## Configuration
 
 rushfetch uses a self-documenting TOML config. Here's a snippet:
 
@@ -117,7 +116,7 @@ command = "pacman -Q | wc -l"
 
 See [full config example](config.toml) with all options!
 
-## 🎨 Popular Themes
+## Popular Themes
 
 Presets are available in the config:
 - **Gruvbox** - Retro colors
@@ -129,7 +128,7 @@ Presets are available in the config:
 
 Just uncomment the desired theme in the config!
 
-## 🌐 Language Support
+## Language Support
 
 ### English mode
 ```
@@ -148,7 +147,7 @@ language = "russian"
 Память ...... 12 GB / 32 GB
 ```
 
-## 🛠️ Custom Field Examples
+## Custom Field Examples
 
 Add whatever you want:
 
@@ -176,7 +175,7 @@ command = "gsettings get org.gnome.desktop.interface gtk-theme"
 
 There are more examples in config.toml!
 
-## 🏗️ Architecture
+## Architecture
 
 rushfetch is built with clean modular architecture:
 
@@ -208,20 +207,20 @@ as soon as the author sober up, he will definitely answer you!
 
 GPL-3.0 - See [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Inspired by:
 - **neofetch** - The original system info tool (rest in peace)
 - **fastfetch** - Fast C implementation
 - **Rust** - For making this possible
 
-## 📞 Support
+## Support
 
-- 🐛 Bugs: [GitHub Issues](https://github.com/Rejzi-dich/rushfetch/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/Rejzi-dich/rushfetch/discussions)
+- Bugs: [GitHub Issues](https://github.com/Rejzi-dich/rushfetch/issues)
+- Discussions: [GitHub Discussions](https://github.com/Rejzi-dich/rushfetch/discussions)
 
 ---
 
-**Made with ❤️ on Rust**
+**Made with ❤️ on ⚡Rust**
 
 *Rush in fast, grab the info, look cool.*
