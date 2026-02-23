@@ -787,7 +787,7 @@ fn builtin_ascii(_width: usize, distro_override: Option<&str>) -> Vec<String> {
             "  /     __   \\_\\  ",
             " /     /  \\     \\ ",
             "/__,--'    '--,__\\",
-            "                  ",
+            "                   ",
         ],
         "apple" | "macos" | "macbook" | "yablocoder" => &[
             "                              ",

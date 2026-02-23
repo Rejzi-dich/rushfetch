@@ -46,6 +46,8 @@
                                              Flatpaks ....... 28
                                              Snaps .......... 18
 ```
+![plot](./screens/rushfetch_1.png)
+
 
 ## 🚀 Installation
 
